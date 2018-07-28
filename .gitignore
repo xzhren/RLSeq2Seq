@@ -1,0 +1,8 @@
+.conda/
+.keras/
+.nv/
+.python_history
+.viminfo
+code/__pycache__/
+data/
+working_dir/

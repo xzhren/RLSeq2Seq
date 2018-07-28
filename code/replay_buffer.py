@@ -1,4 +1,4 @@
-import Queue
+import queue as Queue
 from random import shuffle
 from random import seed
 seed(123)

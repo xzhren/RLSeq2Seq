@@ -168,22 +168,22 @@ class Seq2Seq(object):
 
     # Initialize all vars in the model
     sess = tf.Session(config=util.get_config())
-    print "Initializing all variables..."
+    print("Initializing all variables...")
     sess.run(tf.initialize_all_variables())
 
     # Restore the best model from eval dir
     saver = tf.train.Saver([v for v in tf.all_variables() if "Adagrad" not in v.name])
-    print "Restoring all non-adagrad variables from best model in eval dir..."
+    print("Restoring all non-adagrad variables from best model in eval dir...")
     curr_ckpt = util.load_ckpt(saver, sess, "eval")
-    print "Restored %s." % curr_ckpt
+    print("Restored %s." % curr_ckpt)
 
     # Save this model to train dir and quit
     new_model_name = curr_ckpt.split("/")[-1].replace("bestmodel", "model")
     new_fname = os.path.join(FLAGS.log_root, "train", new_model_name)
-    print "Saving model to %s..." % (new_fname)
+    print("Saving model to %s..." % (new_fname))
     new_saver = tf.train.Saver() # this saver saves all variables that now exist, including Adagrad variables
     new_saver.save(sess, new_fname)
-    print "Saved."
+    print("Saved.")
     exit()
 
   def restore_best_eval_model(self):
@@ -213,21 +213,21 @@ class Seq2Seq(object):
 
     # initialize an entire coverage model from scratch
     sess = tf.Session(config=util.get_config())
-    print "initializing everything..."
+    print("initializing everything...")
     sess.run(tf.global_variables_initializer())
 
     # load all non-coverage weights from checkpoint
     saver = tf.train.Saver([v for v in tf.global_variables() if "coverage" not in v.name and "Adagrad" not in v.name])
-    print "restoring non-coverage variables..."
+    print("restoring non-coverage variables...")
     curr_ckpt = util.load_ckpt(saver, sess)
-    print "restored."
+    print("restored.")
 
     # save this model and quit
     new_fname = curr_ckpt + '_cov_init'
-    print "saving model to %s..." % (new_fname)
+    print("saving model to %s..." % (new_fname))
     new_saver = tf.train.Saver() # this one will save all variables that now exist
     new_saver.save(sess, new_fname)
-    print "saved."
+    print("saved.")
     exit()
 
   def convert_to_reinforce_model(self):
@@ -236,21 +236,21 @@ class Seq2Seq(object):
 
     # initialize an entire reinforce model from scratch
     sess = tf.Session(config=util.get_config())
-    print "initializing everything..."
+    print("initializing everything...")
     sess.run(tf.global_variables_initializer())
 
     # load all non-reinforce weights from checkpoint
     saver = tf.train.Saver([v for v in tf.global_variables() if "reinforce" not in v.name and "Adagrad" not in v.name])
-    print "restoring non-reinforce variables..."
+    print("restoring non-reinforce variables...")
     curr_ckpt = util.load_ckpt(saver, sess)
-    print "restored."
+    print("restored.")
 
     # save this model and quit
     new_fname = curr_ckpt + '_rl_init'
-    print "saving model to %s..." % (new_fname)
+    print("saving model to %s..." % (new_fname))
     new_saver = tf.train.Saver() # this one will save all variables that now exist
     new_saver.save(sess, new_fname)
-    print "saved."
+    print("saved.")
     exit()
 
   def setup_training(self):
@@ -656,7 +656,7 @@ class Seq2Seq(object):
       if FLAGS.mode=="train":
         os.makedirs(FLAGS.log_root)
         fw = open('{}/config.txt'.format(FLAGS.log_root),'w')
-        for k,v in flags.iteritems():
+        for k,v in flags.items():
           fw.write('{}\t{}\n'.format(k,v))
         fw.close()
       else:
@@ -690,7 +690,7 @@ class Seq2Seq(object):
     'dqn_scheduled_sampling', 'dqn_sleep_time', 'E2EBackProp',
     'coverage', 'cov_loss_wt', 'pointer_gen']
     hps_dict = {}
-    for key,val in flags.iteritems(): # for each flag
+    for key,val in flags.items(): # for each flag
       if key in hparam_list: # if it's in the list
         hps_dict[key] = val # add it to the dict
     if FLAGS.ac_training:
@@ -722,7 +722,7 @@ class Seq2Seq(object):
     tf.set_random_seed(111) # a seed value for randomness
 
     if self.hps.mode == 'train':
-      print "creating model..."
+      print("creating model...")
       self.model = SummarizationModel(self.hps, self.vocab)
       if FLAGS.ac_training:
         # current DQN with paramters \Psi
