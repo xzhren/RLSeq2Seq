@@ -74,7 +74,8 @@ class DQN(object):
     def _add_update_weights_op(self):
         """ Updates the weight of the target network based on the current network. """
         self.model_trainables = tf.trainable_variables(scope='{}_relay_network'.format(self._name_variable)) # target variables
-        self._new_trainables = [tf.placeholder(tf.float32, None,name='trainables_{}'.format(i)) for i in range(len(self.model_trainables))]
+        # self.model_trainables = tf.trainable_variables() # target variables
+        self._new_trainables = [tf.placeholder(tf.float32, None, name='trainables_{}'.format(i)) for i in range(len(self.model_trainables))]
         self.assign_ops = []
         if self._hps.dqn_polyak_averaging: # target parameters are slowly updating using: \phi_target = \tau * \phi_target + (1-\tau) * \phi_target
             tau = (tf.cast(self._train_step,tf.float32) % self._hps.dqn_target_update)/float(self._hps.dqn_target_update)

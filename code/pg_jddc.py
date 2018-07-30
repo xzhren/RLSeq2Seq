@@ -1,18 +1,33 @@
-# Copyright 2016 The TensorFlow Authors. All Rights Reserved.
-# Modifications Copyright 2017 Abigail See
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
+# coding: utf-8
+
+import os
+import struct
+import collections
+from tensorflow.core.example import example_pb2
+
+def read_text_file(text_file):
+  lines = []
+  with open(text_file, "r") as f:
+    for line in f:
+      lines.append(line.strip())
+  return lines
+
+def write_to_bin(articles, out_file):
+
+  with open(out_file, 'wb') as writer:
+    for article in articles:
+        abstract = "%s" % ("<result>")
+
+        # Write to tf.Example
+        tf_example = example_pb2.Example()
+        tf_example.features.feature['article'].bytes_list.value.extend([article.encode("utf-8")])
+        tf_example.features.feature['abstract'].bytes_list.value.extend([abstract.encode("utf-8")])
+        tf_example_str = tf_example.SerializeToString()
+        str_len = len(tf_example_str)
+        writer.write(struct.pack('q', str_len))
+        writer.write(struct.pack('%ds' % str_len, tf_example_str))
+
+  print("Finished writing file %s\n" % out_file)
 
 """This is the top-level file to train, evaluate or test your summarization model"""
 
@@ -46,23 +61,23 @@ from tensorflow.python.ops.distributions import bernoulli
 FLAGS = tf.app.flags.FLAGS
 
 # Where to find data
-tf.app.flags.DEFINE_string('data_path', '', 'Path expression to tf.Example datafiles. Can include wildcards to access multiple datafiles.')
-tf.app.flags.DEFINE_string('vocab_path', '', 'Path expression to text vocabulary file.')
+tf.app.flags.DEFINE_string('data_path', 'data/jddc/finished_files/jddc_test.bin', 'Path expression to tf.Example datafiles. Can include wildcards to access multiple datafiles.')
+tf.app.flags.DEFINE_string('vocab_path', 'data/jddc/finished_files/vocab', 'Path expression to text vocabulary file.')
 
 # Important settings
-tf.app.flags.DEFINE_string('mode', 'train', 'must be one of train/eval/decode')
-tf.app.flags.DEFINE_boolean('single_pass', False, 'For decode mode only. If True, run eval on the full dataset using a fixed checkpoint, i.e. take the current checkpoint, and use it to produce one summary for each example in the dataset, write the summaries to file and then get ROUGE scores for the whole dataset. If False (default), run concurrent decoding, i.e. repeatedly load latest checkpoint, use it to produce summaries for randomly-chosen examples and log the results to screen, indefinitely.')
+tf.app.flags.DEFINE_string('mode', 'decode', 'must be one of train/eval/decode')
+tf.app.flags.DEFINE_boolean('single_pass', True, 'For decode mode only. If True, run eval on the full dataset using a fixed checkpoint, i.e. take the current checkpoint, and use it to produce one summary for each example in the dataset, write the summaries to file and then get ROUGE scores for the whole dataset. If False (default), run concurrent decoding, i.e. repeatedly load latest checkpoint, use it to produce summaries for randomly-chosen examples and log the results to screen, indefinitely.')
 tf.app.flags.DEFINE_integer('decode_after', 0, 'skip already decoded docs')
 
 # Where to save output
-tf.app.flags.DEFINE_string('log_root', '', 'Root directory for all logging.')
-tf.app.flags.DEFINE_string('exp_name', '', 'Name for experiment. Logs will be saved in a directory with this name, under log_root.')
+tf.app.flags.DEFINE_string('log_root', 'working_dir/jddc/RLSeq2Seq/', 'Root directory for all logging.')
+tf.app.flags.DEFINE_string('exp_name', 'actor-critic-ddqn', 'Name for experiment. Logs will be saved in a directory with this name, under log_root.')
 
 # Hyperparameters
 tf.app.flags.DEFINE_integer('enc_hidden_dim', 256, 'dimension of RNN hidden states')
 tf.app.flags.DEFINE_integer('dec_hidden_dim', 256, 'dimension of RNN hidden states')
 tf.app.flags.DEFINE_integer('emb_dim', 128, 'dimension of word embeddings')
-tf.app.flags.DEFINE_integer('batch_size', 64, 'minibatch size')
+tf.app.flags.DEFINE_integer('batch_size', 1, 'minibatch size')
 tf.app.flags.DEFINE_integer('max_enc_steps', 400, 'max timesteps of encoder (max source text tokens)')
 tf.app.flags.DEFINE_integer('max_dec_steps', 100, 'max timesteps of decoder (max summary tokens)')
 tf.app.flags.DEFINE_integer('beam_size', 4, 'beam size for beam search decoding.')
@@ -92,14 +107,14 @@ tf.app.flags.DEFINE_float('gamma', 0.99, 'discount factor')
 tf.app.flags.DEFINE_string('reward_function', 'rouge_l/f_score', 'either bleu or one of the rouge measures (rouge_1/f_score,rouge_2/f_score,rouge_l/f_score)')
 
 # parameters of DDQN model
-tf.app.flags.DEFINE_boolean('ac_training', False, 'Use Actor-Critic learning by DDQN.')
+tf.app.flags.DEFINE_boolean('ac_training', True, 'Use Actor-Critic learning by DDQN.')
 tf.app.flags.DEFINE_boolean('dqn_scheduled_sampling', False, 'Whether to use scheduled sampling to use estimates of dqn model vs the actual q-estimates values')
 tf.app.flags.DEFINE_string('dqn_layers', '512,256,128', 'DQN dense hidden layer size, will create three dense layers with 512, 256, and 128 size')
 tf.app.flags.DEFINE_integer('dqn_replay_buffer_size', 100000, 'Size of the replay buffer')
 tf.app.flags.DEFINE_integer('dqn_batch_size', 100, 'Batch size for training the DDQN model')
 tf.app.flags.DEFINE_integer('dqn_target_update', 10000, 'Update target Q network every 10000 steps')
 tf.app.flags.DEFINE_integer('dqn_sleep_time', 2, 'Train DDQN model every 2 seconds')
-tf.app.flags.DEFINE_integer('dqn_gpu_num', 0, 'GPU number to train the DDQN')
+tf.app.flags.DEFINE_integer('dqn_gpu_num', 2, 'GPU number to train the DDQN')
 tf.app.flags.DEFINE_boolean('dueling_net', True, 'Whether to use Duelling Network to train the model') # https://arxiv.org/pdf/1511.06581.pdf
 tf.app.flags.DEFINE_boolean('dqn_polyak_averaging', True, 'Whether to use polyak averaging to update the target network parameters')
 tf.app.flags.DEFINE_boolean('calculate_true_q', False, "Whether to use true Q-values to train DQN or use DQN's estimates to train it")
@@ -642,8 +657,8 @@ class Seq2Seq(object):
       #time.sleep(600) # run eval every 10 minute
 
   def main(self, unused_argv):
-    if len(unused_argv) != 1: # prints a message if you've entered flags incorrectly
-      raise Exception("Problem with flags: %s" % unused_argv)
+    # if len(unused_argv) != 1: # prints a message if you've entered flags incorrectly
+    #   raise Exception("Problem with flags: %s" % unused_argv)
 
     FLAGS.log_root = os.path.join(FLAGS.log_root, FLAGS.exp_name)
     tf.logging.set_verbosity(tf.logging.INFO) # choose what level of logging you want
@@ -746,7 +761,9 @@ class Seq2Seq(object):
       else:
         dqn_target = None
       decoder = BeamSearchDecoder(model, self.batcher, self.vocab, dqn = dqn_target)
-      decoder.decode() # decode indefinitely (unless single_pass=True, in which case deocde the dataset exactly once)
+      # decoder.decode() # decode indefinitely (unless single_pass=True, in which case deocde the dataset exactly once)
+      global result
+      result = decoder.decode()
     else:
       raise ValueError("The 'mode' flag must be one of train/eval/decode")
 
@@ -774,9 +791,22 @@ class Seq2Seq(object):
       result = result1 + result2
       return result1 + result2
 
-def main(unused_argv):
-  seq2seq = Seq2Seq()
-  seq2seq.main(unused_argv)
 
-if __name__ == '__main__':
-  tf.app.run()
+def run_prediction(input_file_path, output_file_path):
+    articles = read_text_file(input_file_path)
+    write_to_bin(articles, os.path.join("./data/jddc/finished_files/", "jddc_test.bin"))
+    
+
+    seq2seq = Seq2Seq()
+    seq2seq.main(None)
+
+    global result
+    summarylt = []
+    for summary in result.strip().split("\n")[3::5]:
+      summarylt.append(summary[len("GENERATED SUMMARY: "):])
+
+    with open(output_file_path, "w") as f:
+        for summary in summarylt:
+            summary = summary.replace(" ", "").replace("<s>", " ").replace("[unk]", "")
+            f.write(summary+"\n")
+    print("finish write reuslt")

@@ -84,6 +84,9 @@ class BeamSearchDecoder(object):
     """Decode examples until data is exhausted (if FLAGS.single_pass) and return, or decode indefinitely, loading latest checkpoint at regular intervals"""
     t0 = time.time()
     counter = FLAGS.decode_after
+    #### rxz single pass result
+    result = ""
+    #### 
     while True:
       tf.reset_default_graph()
       batch = self._batcher.next_batch()  # 1 example repeated across batch
@@ -93,7 +96,7 @@ class BeamSearchDecoder(object):
         tf.logging.info("Output has been saved in %s and %s. Now starting ROUGE eval...", self._rouge_ref_dir, self._rouge_dec_dir)
         results_dict = rouge_eval(self._rouge_ref_dir, self._rouge_dec_dir)
         rouge_log(results_dict, self._decode_dir)
-        return
+        return result
 
       original_article = batch.original_articles[0]  # string
       original_abstract = batch.original_abstracts[0]  # string
@@ -122,6 +125,9 @@ class BeamSearchDecoder(object):
       if FLAGS.single_pass:
         self.write_for_rouge(original_abstract_sents, decoded_words, counter) # write ref summary and decoded summary to file, to eval with pyrouge later
         counter += 1 # this is how many examples we've decoded
+        #### rxz single pass result
+        result += get_print_results(article_withunks, abstract_withunks, decoded_output)
+        ####
       else:
         print_results(article_withunks, abstract_withunks, decoded_output) # log output to screen
         self.write_for_attnvis(article_withunks, abstract_withunks, decoded_words, best_hyp.attn_dists, best_hyp.p_gens) # write info to .json file for visualization tool
@@ -206,6 +212,15 @@ def print_results(article, abstract, decoded_output):
   tf.logging.info('GENERATED SUMMARY: %s', decoded_output)
   print("")
 
+def get_print_results(article, abstract, decoded_output):
+  """Prints the article, the reference summmary and the decoded summary to screen"""
+  result = ""
+  result += "---------------------------------------------------------------------------\n"
+  result += 'ARTICLE:  ' + article + "\n"
+  result += 'REFERENCE SUMMARY: ' + abstract + "\n"
+  result += 'GENERATED SUMMARY: ' + decoded_output + "\n"
+  result += "---------------------------------------------------------------------------\n"
+  return result
 
 def make_html_safe(s):
   """Replace any angled brackets in string s to avoid interfering with HTML attention visualizer."""
