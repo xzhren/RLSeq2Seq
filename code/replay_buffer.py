@@ -117,9 +117,11 @@ class ReplayBatch(object):
         self._x[i,:]=e.state
         # self._y[i,:]=normalize(e.q_value[0:hps.vocab_size], axis=1, norm='l1')
         self._y[i,:]=e.q_value[0:hps.vocab_size]
+        # self._y[i,:] = normalize(e.q_value[0:hps.vocab_size], axis=0, norm='l1')
       if max_art_oovs == 0:
         # self._y_extended[i,:] = normalize(e.q_value[0:hps.vocab_size], axis=1, norm='l1')
         self._y_extended[i,:] = e.q_value[0:hps.vocab_size]
+        # self._y_extended[i,:] = normalize(e.q_value[0:hps.vocab_size], axis=0, norm='l1')
       else:
         self._y_extended[i,:] = e.q_value
 
