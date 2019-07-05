@@ -16,6 +16,7 @@ def write_to_bin(articles, out_file):
 
   with open(out_file, 'wb') as writer:
     for article in articles:
+        article = " ".join(article.replace("<s>", "<p>"))
         abstract = "%s" % ("<result>")
 
         # Write to tf.Example
